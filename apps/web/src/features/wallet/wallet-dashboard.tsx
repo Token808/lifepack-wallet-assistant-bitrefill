@@ -10,6 +10,7 @@ import { type FormEvent, useMemo, useState } from 'react'
 
 type ScenarioKey = 'travel' | 'shopping' | 'gift'
 type PaymentStatus = 'ready' | 'signing' | 'tracking' | 'delivering' | 'delivered'
+type ChatRole = 'assistant' | 'user'
 
 interface Scenario {
   prompt: string
@@ -22,76 +23,97 @@ interface Scenario {
   code: string
 }
 
+interface ChatMessage {
+  role: ChatRole
+  text: string
+}
+
 const scenarios: Record<ScenarioKey, Scenario> = {
   travel: {
-    prompt: '我要去日本 5 天，帮我准备上网和支付',
+    prompt: 'I am going to Japan for 5 days. Help me prepare internet and payment.',
     title: 'Japan Travel Pack',
-    products: 'Japan eSIM 7 天 + Digital Prepaid Visa',
+    products: 'Japan eSIM 7 days + Digital Prepaid Visa',
     region: 'Japan',
     price: '$55.00',
     answer:
-      '已生成 Japan Travel Pack。推荐 Japan eSIM 7 天和 Digital Prepaid Visa，适合旅行上网和线上支付。根据你的余额，USDC 是本次最稳妥的付款方式。',
+      'Japan Travel Pack is ready. The assistant recommends a 7-day Japan eSIM and a Digital Prepaid Visa for travel internet and online payments. USDC is recommended because your balance is stable and sufficient.',
     cards: [
-      ['Japan eSIM 7 天', '短途旅行上网，数字交付安装信息。'],
-      ['Digital Prepaid Visa', '用于线上支付，购买前提示地区和商户限制。'],
-      ['USDC 支付', '余额充足，金额稳定，适合本次订单。'],
+      ['Japan eSIM 7 days', 'Digital delivery for short-term travel internet.'],
+      ['Digital Prepaid Visa', 'Useful for online payments with region and merchant reminders.'],
+      ['USDC payment', 'Stable value and enough balance for this order.'],
     ],
-    code: 'ESIM-JP7-LIFE-4829 · VISA-50-REFILL-9201',
+    code: 'ESIM-JP7-LIFE-4829 - VISA-50-REFILL-9201',
   },
   shopping: {
-    prompt: '我想买一个能网上付款的虚拟卡',
+    prompt: 'I need a virtual card for online shopping.',
     title: 'Online Shopping Pack',
     products: 'Digital Prepaid Visa + Amazon Gift Card',
     region: 'Global / US',
     price: '$75.00',
     answer:
-      '已生成 Online Shopping Pack。推荐 Digital Prepaid Visa 和 Amazon 礼品卡，让钱包余额直接变成可用于线上消费的数字商品。',
+      'Online Shopping Pack is ready. The assistant recommends a Digital Prepaid Visa and an Amazon gift card so wallet balance can turn into spendable digital commerce value.',
     cards: [
-      ['Digital Prepaid Visa', '适合网上支付，先展示使用限制。'],
-      ['Amazon Gift Card', '高频电商场景，适合快速消费。'],
-      ['USDT / USDC', '稳定币支付更容易理解实际成本。'],
+      ['Digital Prepaid Visa', 'For online payments with usage limits shown before checkout.'],
+      ['Amazon Gift Card', 'A high-frequency e-commerce option for quick spending.'],
+      ['USDT / USDC', 'Stablecoin payments make the real cost easier to understand.'],
     ],
-    code: 'VISA-75-LIFE-3188 · AMAZON-25-REFILL-6402',
+    code: 'VISA-75-LIFE-3188 - AMAZON-25-REFILL-6402',
   },
   gift: {
-    prompt: '我朋友喜欢游戏，我想送他 30 美元礼物',
+    prompt: 'My friend likes games. I want to send a 30 USD gift.',
     title: 'Game Gift Pack',
     products: 'Steam Gift Card 30 USD + Gift Claim Page',
     region: 'US',
     price: '$30.00',
     answer:
-      '已生成 Game Gift Pack。推荐 Steam 礼品卡，并为收礼人生成一个可分享领取页，付款后兑换码会进入礼物页面。',
+      'Game Gift Pack is ready. The assistant recommends a Steam gift card and prepares a shareable claim flow for the receiver after payment.',
     cards: [
-      ['Steam Gift Card', '适合游戏玩家，礼品属性强。'],
-      ['Gift Claim Page', '可加入祝福语和领取状态。'],
-      ['Lightning 支付', '小额快速付款体验更顺滑。'],
+      ['Steam Gift Card', 'A strong gift option for gamers.'],
+      ['Gift Claim Page', 'Can include a message and a claim status.'],
+      ['Lightning payment', 'Fast small-value payment experience.'],
     ],
-    code: 'STEAM-30-LIFE-7731 · CLAIM-LINK-READY',
+    code: 'STEAM-30-LIFE-7731 - CLAIM-LINK-READY',
   },
 }
 
 const assets = [
-  { symbol: 'USDC', amount: '326.4 USDC', value: '$326.40', detail: 'Base · Polygon' },
-  { symbol: 'USDT', amount: '198.1 USDT', value: '$198.10', detail: 'Tron · Ethereum' },
-  { symbol: 'BTC', amount: '0.0015 BTC', value: '$156.70', detail: 'Bitcoin · Lightning' },
+  { symbol: 'USDC', amount: '326.4 USDC', value: '$326.40', detail: 'Base / Polygon' },
+  { symbol: 'USDT', amount: '198.1 USDT', value: '$198.10', detail: 'Tron / Ethereum' },
+  { symbol: 'BTC', amount: '0.0015 BTC', value: '$156.70', detail: 'Bitcoin / Lightning' },
   { symbol: 'ETH', amount: '0.022 ETH', value: '$92.35', detail: 'Ethereum Mainnet' },
   { symbol: 'SOL', amount: '0.42 SOL', value: '$69.21', detail: 'Solana' },
 ]
 
-const primaryPayments = [
-  ['USDC', '余额充足 · 稳定'],
-  ['Lightning', '快速小额付款'],
-  ['USDT', '常用稳定币'],
-  ['Solana', '备用支付'],
+const primaryPayments: Array<[string, string]> = [
+  ['USDC', 'Stable balance'],
+  ['Lightning', 'Fast small payment'],
+  ['USDT', 'Popular stablecoin'],
+  ['Solana', 'Backup payment'],
 ]
 
-const morePayments = [
-  ['Bitcoin', 'BTC 主网支付'],
-  ['Ethereum', 'ETH 主网支付'],
-  ['Binance Pay', '交易所快捷支付'],
-  ['Litecoin', 'LTC 低成本支付'],
-  ['Dogecoin', 'DOGE 支付'],
-  ['Dash', 'DASH 支付'],
+const morePayments: Array<[string, string]> = [
+  ['Bitcoin', 'BTC mainnet'],
+  ['Ethereum', 'ETH mainnet'],
+  ['Binance Pay', 'Exchange quick pay'],
+  ['Litecoin', 'Low-cost LTC'],
+  ['Dogecoin', 'DOGE payment'],
+  ['Dash', 'DASH payment'],
+]
+
+const sceneButtons: Array<[ScenarioKey, string, string]> = [
+  ['travel', 'Travel Pack', 'eSIM + payment card + budget suggestion'],
+  ['shopping', 'Shopping Pack', 'Visa / Mastercard / e-commerce gift card'],
+  ['gift', 'Gift Pack', 'Steam / Apple / Google Play gift flow'],
+]
+
+const metricCards: Array<[string, string]> = [
+  ['5,000+', 'Gift cards, payment cards, eSIMs, and mobile top-ups from global merchants.'],
+  [
+    '10 ways',
+    'Bitcoin, Lightning, Ethereum, USDC, USDT, Binance Pay, Litecoin, Dogecoin, Solana, Dash.',
+  ],
+  ['Token UI', 'Built with official @repo/ui components for wallet and payment surfaces.'],
+  ['Security', 'No private key display. Payment amount, chain, and order are confirmed first.'],
 ]
 
 const tokenCoreAdapter = {
@@ -129,15 +151,10 @@ function Glyph({ children }: { children: string }) {
 
 function inferScenario(text: string): ScenarioKey {
   const lowerText = text.toLowerCase()
-  if (text.includes('日本') || text.includes('旅行') || lowerText.includes('esim')) {
+  if (lowerText.includes('japan') || lowerText.includes('travel') || lowerText.includes('esim')) {
     return 'travel'
   }
-  if (
-    text.includes('送') ||
-    text.includes('朋友') ||
-    text.includes('游戏') ||
-    lowerText.includes('steam')
-  ) {
+  if (lowerText.includes('gift') || lowerText.includes('friend') || lowerText.includes('game')) {
     return 'gift'
   }
   return 'shopping'
@@ -158,8 +175,8 @@ function WalletDashboard() {
   const [payment, setPayment] = useState('USDC')
   const [showMorePayments, setShowMorePayments] = useState(false)
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('ready')
-  const [messages, setMessages] = useState([
-    { role: 'assistant', text: '你好，我可以把你的生活需求转换成 Bitrefill 商品订单。' },
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { role: 'assistant', text: 'Tell me what you need. I will turn it into a Bitrefill order.' },
     { role: 'user', text: scenarios.travel.prompt },
     { role: 'assistant', text: scenarios.travel.answer },
   ])
@@ -247,20 +264,22 @@ function WalletDashboard() {
         <div className="grid gap-2 text-body-sm text-muted-foreground sm:grid-cols-3">
           <span>TokenCore-compatible signer</span>
           <span>AI shopping assistant</span>
-          <span>Gift cards · Payment cards · eSIM</span>
+          <span>Gift cards / Payment cards / eSIM</span>
         </div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[310px_minmax(420px,1fr)_380px]">
         <Card className="min-h-[720px]" size="sm">
           <CardHeader>
-            <CardTitle>TokenCore 钱包资产</CardTitle>
+            <CardTitle>TokenCore Wallet Assets</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
             <div>
-              <div className="text-body-sm text-muted-foreground">可消费余额</div>
+              <div className="text-body-sm text-muted-foreground">Spendable balance</div>
               <div className="mt-1 text-display-lg font-bold tracking-tight">$842.76</div>
-              <div className="mt-2 text-body-sm text-muted-foreground">估算为稳定币价值 · +2.4% 本周</div>
+              <div className="mt-2 text-body-sm text-muted-foreground">
+                Stablecoin estimate / +2.4% this week
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -278,12 +297,10 @@ function WalletDashboard() {
             </div>
 
             <div className="space-y-3 border-t border-border pt-4">
-              <div className="text-caption font-semibold uppercase text-muted-foreground">生活场景</div>
-              {([
-                ['travel', 'Travel Pack', 'eSIM + 支付卡 + 预算建议'],
-                ['shopping', 'Shopping Pack', 'Visa / Mastercard / 电商礼品卡'],
-                ['gift', 'Gift Pack', 'Steam / Apple / Google Play 分享送礼'],
-              ] as Array<[ScenarioKey, string, string]>).map(([key, title, detail]) => (
+              <div className="text-caption font-semibold uppercase text-muted-foreground">
+                Life scenarios
+              </div>
+              {sceneButtons.map(([key, title, detail]) => (
                 <button
                   key={key}
                   type="button"
@@ -307,7 +324,7 @@ function WalletDashboard() {
 
         <Card className="min-h-[720px]" size="sm">
           <CardHeader>
-            <CardTitle>AI 电商助手</CardTitle>
+            <CardTitle>AI Commerce Assistant</CardTitle>
           </CardHeader>
           <CardContent className="flex min-h-[640px] flex-col gap-4">
             <div className="flex-1 space-y-4 overflow-hidden rounded-2xl border border-border bg-background p-4">
@@ -326,7 +343,9 @@ function WalletDashboard() {
                 {scenario.cards.map(([title, detail]) => (
                   <div key={title} className="rounded-xl border border-border bg-card p-3">
                     <div className="text-body-sm font-bold">{title}</div>
-                    <div className="mt-2 text-caption leading-relaxed text-muted-foreground">{detail}</div>
+                    <div className="mt-2 text-caption leading-relaxed text-muted-foreground">
+                      {detail}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -334,10 +353,10 @@ function WalletDashboard() {
 
             <form className="flex gap-3" onSubmit={submitPrompt}>
               <Input
-                aria-label="输入生活需求"
+                aria-label="Enter shopping intent"
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
-                placeholder="告诉钱包你想买什么"
+                placeholder="Tell the wallet what you need"
               />
               <Button type="submit" className="px-6">
                 Go
@@ -348,7 +367,7 @@ function WalletDashboard() {
 
         <Card className="min-h-[720px]" size="sm">
           <CardHeader>
-            <CardTitle>Bitrefill 订单卡</CardTitle>
+            <CardTitle>Bitrefill Order Card</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-2xl border border-border bg-background p-4">
@@ -363,62 +382,71 @@ function WalletDashboard() {
               </div>
               <div className="mt-4 grid gap-2 text-body-sm">
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">地区</span>
+                  <span className="text-muted-foreground">Region</span>
                   <span className="font-semibold">{scenario.region}</span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">钱包层</span>
+                  <span className="text-muted-foreground">Wallet layer</span>
                   <span className="font-semibold">TokenCore / tcx-wasm Signer</span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">订单号</span>
+                  <span className="text-muted-foreground">Order ID</span>
                   <span className="font-semibold">LP-REFILL-2048</span>
                 </div>
               </div>
             </div>
 
             <div className="space-y-3">
-              <div className="text-caption font-semibold uppercase text-muted-foreground">推荐支付</div>
+              <div className="text-caption font-semibold uppercase text-muted-foreground">
+                Recommended payment
+              </div>
               <div className="grid grid-cols-2 gap-2">
-                {[...primaryPayments, ...(showMorePayments ? morePayments : [])].map(([name, detail]) => (
-                  <button
-                    key={name}
-                    type="button"
-                    onClick={() => {
-                      setPayment(name)
-                      setPaymentStatus('ready')
-                    }}
-                    className={`rounded-xl border p-3 text-left transition ${
-                      payment === name
-                        ? 'border-primary bg-primary-soft'
-                        : 'border-border bg-background hover:bg-accent'
-                    }`}
-                  >
-                    <span className="block text-body-sm font-bold">{name}</span>
-                    <span className="mt-1 block text-caption text-muted-foreground">{detail}</span>
-                  </button>
-                ))}
+                {[...primaryPayments, ...(showMorePayments ? morePayments : [])].map(
+                  ([name, detail]) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => {
+                        setPayment(name)
+                        setPaymentStatus('ready')
+                      }}
+                      className={`rounded-xl border p-3 text-left transition ${
+                        payment === name
+                          ? 'border-primary bg-primary-soft'
+                          : 'border-border bg-background hover:bg-accent'
+                      }`}
+                    >
+                      <span className="block text-body-sm font-bold">{name}</span>
+                      <span className="mt-1 block text-caption text-muted-foreground">{detail}</span>
+                    </button>
+                  ),
+                )}
               </div>
               <Button
                 variant="outline"
                 className="w-full"
                 onClick={() => setShowMorePayments((value) => !value)}
               >
-                {showMorePayments ? '收起更多支付方式' : '展开更多支付方式'}
+                {showMorePayments ? 'Hide more payment methods' : 'Show more payment methods'}
               </Button>
             </div>
 
-            <Button className="w-full" size="lg" onClick={runPayment} disabled={paymentStatus !== 'ready'}>
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={runPayment}
+              disabled={paymentStatus !== 'ready'}
+            >
               {paymentLabel}
             </Button>
 
             <div className="grid gap-3">
               {[
-                ['1', '搜索 Bitrefill 商品', 'Catalog matched'],
-                ['2', '选择面额和地区', 'Order composed'],
-                ['3', 'TokenCore 本地签名付款', `${payment} payment request`],
-                ['4', 'Bitrefill 发票追踪', 'Invoice and chain confirmation'],
-                ['5', '数字商品交付', 'Code or eSIM delivered'],
+                ['1', 'Search Bitrefill products', 'Catalog matched'],
+                ['2', 'Choose amount and region', 'Order composed'],
+                ['3', 'TokenCore local signing', `${payment} payment request`],
+                ['4', 'Track Bitrefill invoice', 'Invoice and chain confirmation'],
+                ['5', 'Deliver digital item', 'Code or eSIM delivered'],
               ].map(([number, label, detail], index) => (
                 <StepCard
                   key={label}
@@ -433,7 +461,7 @@ function WalletDashboard() {
             {paymentStatus === 'delivered' ? (
               <div className="rounded-2xl border border-success-border bg-success-surface-tint p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="font-bold">已交付到钱包</div>
+                  <div className="font-bold">Delivered to wallet</div>
                   <Badge variant="success">Redeem Ready</Badge>
                 </div>
                 <div className="mt-3 rounded-xl border border-border bg-background p-3 font-mono text-caption leading-relaxed">
@@ -446,12 +474,7 @@ function WalletDashboard() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-4">
-        {[
-          ['5,000+', '全球商户礼品卡、支付卡、eSIM 和充值商品。'],
-          ['10 ways', 'Bitcoin、Lightning、Ethereum、USDC、USDT、Binance Pay、Litecoin、Dogecoin、Solana、Dash。'],
-          ['Token UI', '使用官方 @repo/ui 组件构建钱包、支付确认和订单状态界面。'],
-          ['Security', '不展示私钥，付款前明确确认金额、链和订单。'],
-        ].map(([title, detail]) => (
+        {metricCards.map(([title, detail]) => (
           <Card key={title} size="sm">
             <CardContent className="pt-4">
               <div className="text-title-sm font-bold">{title}</div>

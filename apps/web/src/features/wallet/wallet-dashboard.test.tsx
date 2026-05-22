@@ -12,8 +12,8 @@ describe('WalletDashboard', () => {
     )
 
     expect(html).toContain('LifePack Wallet Assistant')
-    expect(html).toContain('TokenCore 钱包资产')
-    expect(html).toContain('Bitrefill 订单卡')
+    expect(html).toContain('TokenCore Wallet Assets')
+    expect(html).toContain('Bitrefill Order Card')
     expect(html).toContain('USDC')
   })
 })
