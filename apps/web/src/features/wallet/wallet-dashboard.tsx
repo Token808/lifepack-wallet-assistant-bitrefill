@@ -191,6 +191,14 @@ function WalletDashboard() {
     return 'Purchase Delivered by TokenCore'
   }, [payment, paymentStatus])
 
+  const orderSteps: Array<[string, string, string]> = [
+    ['1', 'Search Bitrefill products', 'Catalog matched'],
+    ['2', 'Choose amount and region', 'Order composed'],
+    ['3', 'TokenCore local signing', `${payment} payment request`],
+    ['4', 'Track Bitrefill invoice', 'Invoice and chain confirmation'],
+    ['5', 'Deliver digital item', 'Code or eSIM delivered'],
+  ]
+
   const chooseScenario = (nextScenario: ScenarioKey) => {
     setScenarioKey(nextScenario)
     setPrompt(scenarios[nextScenario].prompt)
@@ -441,13 +449,7 @@ function WalletDashboard() {
             </Button>
 
             <div className="grid gap-3">
-              {[
-                ['1', 'Search Bitrefill products', 'Catalog matched'],
-                ['2', 'Choose amount and region', 'Order composed'],
-                ['3', 'TokenCore local signing', `${payment} payment request`],
-                ['4', 'Track Bitrefill invoice', 'Invoice and chain confirmation'],
-                ['5', 'Deliver digital item', 'Code or eSIM delivered'],
-              ].map(([number, label, detail], index) => (
+              {orderSteps.map(([number, label, detail], index) => (
                 <StepCard
                   key={label}
                   icon={<Glyph>{number}</Glyph>}
